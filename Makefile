@@ -2,10 +2,10 @@ APP_NAME=searx/searxstats:latest
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-qa:
-	flake8 --max-line-length=120 searxstats tests
-	pylint searxstats tests
-	python -m pytest --cov-report html --cov=searxstats tests -vv
+qa: venv.dev
+	./ve/bin/flake8 --max-line-length=120 searxstats tests
+	./ve/bin/pylint searxstats tests
+	./ve/bin/python -m pytest --cov-report html --cov=searxstats tests -vv
 
 docker-build: # Build the container
 	docker build -t $(APP_NAME) .
@@ -23,5 +23,25 @@ docker-run: # Run the container
 	# run
 	./docker-run.sh --all
 
-webserver:
-	cd $(ROOT_DIR)/html; python -m http.server 8889
+venv:
+	python3 -m venv ve
+	./ve/bin/pip install -U pip wheel setuptools
+	./ve/bin/pip install -r requirements.txt
+	. ./ve/bin/activate; \
+		./utils/install-geckodriver
+
+venv.dev: venv
+	./ve/bin/pip install -r requirements-dev.txt
+
+
+clean:
+	rm -rf ./ve/ ./cache ./html/data
+
+run: venv
+	mkdir -p cache
+	mkdir -p html/data
+	touch html/data/instances.json
+	./ve/bin/python -m searxstats --cache ./cache --all
+
+webserver: venv
+	cd $(ROOT_DIR)/html; $(ROOT_DIR)/ve/bin/python -m http.server 8889
